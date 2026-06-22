@@ -1,0 +1,713 @@
+openapi: 3.0.3
+info:
+  title: WannaGo API
+  description: |
+    API REST para gerenciar lugares que você quer visitar, está planejando ou já visitou.
+
+    **Tecnologias:** Node.js 22+ · Express · SQLite (`node:sqlite`)
+
+    **Base URL (desenvolvimento):** `http://localhost:3000`
+  version: 1.0.0
+  contact:
+    name: WannaGo
+
+servers:
+  - url: http://localhost:3000
+    description: Desenvolvimento local
+  - url: https://seu-app.onrender.com
+    description: Produção (Render)
+
+tags:
+  - name: Lugares
+    description: Gerenciamento de lugares
+  - name: Anotações
+    description: Anotações vinculadas a um lugar
+  - name: Categorias
+    description: Categorias de lugares
+  - name: Status
+    description: Status de um lugar (sonho, planejando, visitado)
+  - name: Usuários
+    description: Usuários do sistema
+
+paths:
+
+  # ──────────────────────────────────────────
+  # LUGARES
+  # ──────────────────────────────────────────
+
+  /api/lugares:
+    get:
+      tags: [Lugares]
+      summary: Listar lugares
+      description: Retorna todos os lugares. Suporta filtros via query string.
+      parameters:
+        - name: status
+          in: query
+          description: Filtrar por descrição do status (ex. "sonho")
+          schema:
+            type: string
+            example: sonho
+        - name: statusId
+          in: query
+          description: Filtrar por ID do status
+          schema:
+            type: integer
+            example: 1
+        - name: categoriaId
+          in: query
+          description: Filtrar por ID da categoria
+          schema:
+            type: integer
+            example: 2
+        - name: usuarioId
+          in: query
+          description: Filtrar por ID do usuário
+          schema:
+            type: integer
+            example: 1
+      responses:
+        "200":
+          description: Lista de lugares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lugar"
+              example:
+                - id: 1
+                  nome: Kyoto
+                  pais: Japão
+                  status: sonho
+                  statusId: 1
+                  imagemUrl: null
+                  categoriaId: 3
+                  usuarioId: 1
+                  criadoEm: "2024-06-01T10:00:00.000Z"
+
+    post:
+      tags: [Lugares]
+      summary: Criar lugar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LugarInput"
+            example:
+              nome: Kyoto
+              pais: Japão
+              status: sonho
+              categoriaId: 3
+              usuarioId: 1
+      responses:
+        "201":
+          description: Lugar criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lugar"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/lugares/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      tags: [Lugares]
+      summary: Buscar lugar por ID
+      responses:
+        "200":
+          description: Lugar encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lugar"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Lugares]
+      summary: Atualizar lugar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LugarInput"
+      responses:
+        "200":
+          description: Lugar atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lugar"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Lugares]
+      summary: Remover lugar
+      description: Remove o lugar e todas as suas anotações (CASCADE).
+      responses:
+        "204":
+          description: Removido com sucesso (sem corpo)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # ANOTAÇÕES (aninhadas em lugar)
+  # ──────────────────────────────────────────
+
+  /api/lugares/{lugarId}/anotacoes:
+    parameters:
+      - name: lugarId
+        in: path
+        required: true
+        description: ID do lugar pai
+        schema:
+          type: integer
+
+    get:
+      tags: [Anotações]
+      summary: Listar anotações de um lugar
+      responses:
+        "200":
+          description: Lista de anotações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Anotacao"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Anotações]
+      summary: Criar anotação em um lugar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnotacaoInput"
+            example:
+              texto: Visitar o templo Fushimi Inari ao nascer do sol.
+      responses:
+        "201":
+          description: Anotação criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Anotacao"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # ANOTAÇÕES (acesso direto por ID)
+  # ──────────────────────────────────────────
+
+  /api/anotacoes/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      tags: [Anotações]
+      summary: Buscar anotação por ID
+      responses:
+        "200":
+          description: Anotação encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Anotacao"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Anotações]
+      summary: Atualizar anotação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnotacaoInput"
+      responses:
+        "200":
+          description: Anotação atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Anotacao"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Anotações]
+      summary: Remover anotação
+      responses:
+        "204":
+          description: Removida com sucesso (sem corpo)
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # CATEGORIAS
+  # ──────────────────────────────────────────
+
+  /api/categorias:
+    get:
+      tags: [Categorias]
+      summary: Listar categorias
+      responses:
+        "200":
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Categoria"
+              example:
+                - id: 1
+                  nome: Praia
+                - id: 2
+                  nome: Cidade
+
+    post:
+      tags: [Categorias]
+      summary: Criar categoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome]
+              properties:
+                nome:
+                  type: string
+                  example: Gastronomia
+      responses:
+        "201":
+          description: Categoria criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+
+  /api/categorias/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      tags: [Categorias]
+      summary: Buscar categoria por ID
+      responses:
+        "200":
+          description: Categoria encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Categorias]
+      summary: Atualizar categoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome:
+                  type: string
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Categoria"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Categorias]
+      summary: Remover categoria
+      responses:
+        "204":
+          description: Removida com sucesso
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # STATUS
+  # ──────────────────────────────────────────
+
+  /api/status:
+    get:
+      tags: [Status]
+      summary: Listar status
+      responses:
+        "200":
+          description: Lista de status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Status"
+              example:
+                - id: 1
+                  descricao: sonho
+                - id: 2
+                  descricao: planejando
+                - id: 3
+                  descricao: visitado
+
+    post:
+      tags: [Status]
+      summary: Criar status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao]
+              properties:
+                descricao:
+                  type: string
+                  example: em viagem
+      responses:
+        "201":
+          description: Status criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+
+  /api/status/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      tags: [Status]
+      summary: Buscar status por ID
+      responses:
+        "200":
+          description: Status encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Status]
+      summary: Atualizar status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descricao:
+                  type: string
+      responses:
+        "200":
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Status]
+      summary: Remover status
+      responses:
+        "204":
+          description: Removido com sucesso
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # USUÁRIOS
+  # ──────────────────────────────────────────
+
+  /api/usuarios:
+    get:
+      tags: [Usuários]
+      summary: Listar usuários
+      responses:
+        "200":
+          description: Lista de usuários
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+
+    post:
+      tags: [Usuários]
+      summary: Criar usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioInput"
+            example:
+              nome: Ana Silva
+              email: ana@example.com
+      responses:
+        "201":
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+
+  /api/usuarios/{id}:
+    parameters:
+      - $ref: "#/components/parameters/Id"
+
+    get:
+      tags: [Usuários]
+      summary: Buscar usuário por ID
+      responses:
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Usuários]
+      summary: Atualizar usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UsuarioInput"
+      responses:
+        "200":
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Usuários]
+      summary: Remover usuário
+      responses:
+        "204":
+          description: Removido com sucesso
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ──────────────────────────────────────────
+# COMPONENTES REUTILIZÁVEIS
+# ──────────────────────────────────────────
+
+components:
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: ID do recurso
+      schema:
+        type: integer
+        example: 1
+
+  responses:
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: Lugar não encontrado
+    BadRequest:
+      description: Dados inválidos
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Erro"
+          example:
+            erro: O nome do lugar é obrigatório
+
+  schemas:
+
+    Erro:
+      type: object
+      properties:
+        erro:
+          type: string
+          description: Mensagem de erro
+
+    Categoria:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Praia
+
+    Status:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        descricao:
+          type: string
+          example: sonho
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Ana Silva
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+
+    UsuarioInput:
+      type: object
+      required: [nome, email]
+      properties:
+        nome:
+          type: string
+          example: Ana Silva
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+
+    Lugar:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: Kyoto
+        pais:
+          type: string
+          example: Japão
+        status:
+          type: string
+          description: Descrição do status (via JOIN)
+          example: sonho
+        statusId:
+          type: integer
+          example: 1
+        imagemUrl:
+          type: string
+          nullable: true
+          example: https://exemplo.com/kyoto.jpg
+        categoriaId:
+          type: integer
+          nullable: true
+          example: 3
+        usuarioId:
+          type: integer
+          nullable: true
+          example: 1
+        criadoEm:
+          type: string
+          format: date-time
+          example: "2024-06-01T10:00:00.000Z"
+
+    LugarInput:
+      type: object
+      required: [nome, pais]
+      properties:
+        nome:
+          type: string
+          example: Kyoto
+        pais:
+          type: string
+          example: Japão
+        status:
+          type: string
+          description: Descrição do status. Se omitido, usa "sonho" como padrão.
+          example: sonho
+        statusId:
+          type: integer
+          description: ID do status (alternativa a `status`)
+          example: 1
+        imagemUrl:
+          type: string
+          nullable: true
+          example: https://exemplo.com/kyoto.jpg
+        categoriaId:
+          type: integer
+          nullable: true
+          example: 3
+        usuarioId:
+          type: integer
+          nullable: true
+          example: 1
+
+    Anotacao:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        texto:
+          type: string
+          example: Visitar o templo Fushimi Inari ao nascer do sol.
+        dataCriacao:
+          type: string
+          format: date-time
+          example: "2024-06-01T10:00:00.000Z"
+        lugarId:
+          type: integer
+          example: 1
+
+    AnotacaoInput:
+      type: object
+      required: [texto]
+      properties:
+        texto:
+          type: string
+          example: Visitar o templo Fushimi Inari ao nascer do sol.
