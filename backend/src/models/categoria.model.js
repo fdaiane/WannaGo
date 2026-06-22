@@ -1,40 +1,29 @@
-
-let categorias = [
-  { id: 1, nome: 'Praia' },
-  { id: 2, nome: 'Cidade' },
-  { id: 3, nome: 'Natureza' },
-  { id: 4, nome: 'Cultural' },
-];
-
-let proximoId = 5;
+import { db } from '../db.js';
 
 export const CategoriaModel = {
   listar() {
-    return categorias;
+    return db.prepare('SELECT * FROM categorias').all();
   },
 
   buscarPorId(id) {
-    return categorias.find((c) => c.id === Number(id)) || null;
+    return db.prepare('SELECT * FROM categorias WHERE id = ?').get(Number(id)) || null;
   },
 
-  inserir(dados) {
-    const nova = { id: proximoId++, ...dados };
-    categorias.push(nova);
-    return nova;
+  inserir({ nome }) {
+    const r = db.prepare('INSERT INTO categorias (nome) VALUES (?)').run(nome);
+    return this.buscarPorId(r.lastInsertRowid);
   },
 
   atualizar(id, dados) {
-    const index = categorias.findIndex((c) => c.id === Number(id));
-    if (index === -1) return null;
-    categorias[index] = { ...categorias[index], ...dados };
-    return categorias[index];
+    const atual = this.buscarPorId(id);
+    if (!atual) return null;
+    const novo = { ...atual, ...dados };
+    db.prepare('UPDATE categorias SET nome = ? WHERE id = ?').run(novo.nome, Number(id));
+    return this.buscarPorId(id);
   },
 
   remover(id) {
-    const index = categorias.findIndex((c) => c.id === Number(id));
-    if (index === -1) return null;
-    const removida = categorias[index];
-    categorias.splice(index, 1);
-    return removida;
+    const r = db.prepare('DELETE FROM categorias WHERE id = ?').run(Number(id));
+    return r.changes > 0;
   },
 };

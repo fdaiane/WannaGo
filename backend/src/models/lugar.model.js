@@ -1,67 +1,95 @@
+import { db } from '../db.js';
 
-let lugares = [
-  {
-    id: 1,
-    nome: 'Praia de Pipa',
-    pais: 'Brasil',
-    categoriaId: 1,
-    status: 'sonho',
-    imagemUrl: '',
-    criadoEm: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    nome: 'Paris',
-    pais: 'França',
-    categoriaId: 2,
-    status: 'planejando',
-    imagemUrl: '',
-    criadoEm: new Date().toISOString(),
-  },
-];
+// converte a linha do banco (snake_case + status_id) para o formato da API
+function paraApi(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    nome: row.nome,
+    pais: row.pais,
+    status: row.status_descricao ?? null,   // texto do status, via JOIN
+    statusId: row.status_id,
+    imagemUrl: row.imagem_url,
+    categoriaId: row.categoria_id,
+    usuarioId: row.usuario_id,
+    criadoEm: row.criado_em,
+  };
+}
 
-let proximoId = 3;
+// SELECT com JOIN em status para devolver a descrição (ex: "sonho") pronta pro front
+const SELECT_BASE = `
+  SELECT lugares.*, status.descricao AS status_descricao
+  FROM lugares
+  JOIN status ON status.id = lugares.status_id
+`;
 
 export const LugarModel = {
   listar(filtros = {}) {
-    let resultado = [...lugares];
-    if (filtros.status) {
-      resultado = resultado.filter((l) => l.status === filtros.status);
+    let sql = SELECT_BASE + ' WHERE 1=1';
+    const params = [];
+
+    if (filtros.statusId) {
+      sql += ' AND lugares.status_id = ?';
+      params.push(Number(filtros.statusId));
     }
     if (filtros.categoriaId) {
-      resultado = resultado.filter(
-        (l) => l.categoriaId === Number(filtros.categoriaId)
-      );
+      sql += ' AND lugares.categoria_id = ?';
+      params.push(Number(filtros.categoriaId));
     }
-    return resultado;
+    if (filtros.usuarioId) {
+      sql += ' AND lugares.usuario_id = ?';
+      params.push(Number(filtros.usuarioId));
+    }
+
+    const rows = db.prepare(sql).all(...params);
+    return rows.map(paraApi);
   },
 
   buscarPorId(id) {
-    return lugares.find((l) => l.id === Number(id)) || null;
+    const row = db.prepare(SELECT_BASE + ' WHERE lugares.id = ?').get(Number(id));
+    return paraApi(row);
   },
 
-  inserir(dados) {
-    const novo = {
-      id: proximoId++,
-      ...dados,
-      criadoEm: new Date().toISOString(),
-    };
-    lugares.push(novo);
-    return novo;
+  inserir({ nome, pais, statusId, imagemUrl, categoriaId, usuarioId }) {
+    const criadoEm = new Date().toISOString();
+    const r = db.prepare(
+      `INSERT INTO lugares (nome, pais, status_id, imagem_url, categoria_id, usuario_id, criado_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      nome,
+      pais,
+      Number(statusId),
+      imagemUrl ?? null,
+      categoriaId ? Number(categoriaId) : null,
+      usuarioId ? Number(usuarioId) : null,
+      criadoEm
+    );
+    return this.buscarPorId(r.lastInsertRowid);
   },
 
   atualizar(id, dados) {
-    const index = lugares.findIndex((l) => l.id === Number(id));
-    if (index === -1) return null;
-    lugares[index] = { ...lugares[index], ...dados };
-    return lugares[index];
+    const atual = this.buscarPorId(id);
+    if (!atual) return null;
+
+    const novo = { ...atual, ...dados };
+    db.prepare(
+      `UPDATE lugares
+       SET nome = ?, pais = ?, status_id = ?, imagem_url = ?, categoria_id = ?, usuario_id = ?
+       WHERE id = ?`
+    ).run(
+      novo.nome,
+      novo.pais,
+      Number(novo.statusId),
+      novo.imagemUrl ?? null,
+      novo.categoriaId ? Number(novo.categoriaId) : null,
+      novo.usuarioId ? Number(novo.usuarioId) : null,
+      Number(id)
+    );
+    return this.buscarPorId(id);
   },
 
   remover(id) {
-    const index = lugares.findIndex((l) => l.id === Number(id));
-    if (index === -1) return null;
-    const removido = lugares[index];
-    lugares.splice(index, 1);
-    return removido;
+    const r = db.prepare('DELETE FROM lugares WHERE id = ?').run(Number(id));
+    return r.changes > 0;
   },
 };

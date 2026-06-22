@@ -16,13 +16,14 @@ export const CategoriaService = {
   },
 
   criar(dados) {
-
+    // SRP: validações ficam no service, não no model
     if (!dados.nome || dados.nome.trim() === '') {
       const err = new Error('O nome da categoria é obrigatório');
       err.status = 400;
       throw err;
     }
 
+    // Regra de negócio: nome com primeira letra maiúscula
     dados.nome = dados.nome.trim();
     dados.nome = dados.nome.charAt(0).toUpperCase() + dados.nome.slice(1);
 
@@ -30,7 +31,7 @@ export const CategoriaService = {
   },
 
   atualizar(id, dados) {
-    this.buscarPorId(id); 
+    this.buscarPorId(id); // lança 404 se não existir
 
     if (dados.nome !== undefined) {
       if (dados.nome.trim() === '') {
@@ -46,7 +47,7 @@ export const CategoriaService = {
   },
 
   remover(id) {
-    this.buscarPorId(id); 
+    this.buscarPorId(id); // lança 404 se não existir
     return CategoriaModel.remover(id);
   },
 };

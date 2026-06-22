@@ -3,8 +3,9 @@ import { LugarService } from '../services/lugar.service.js';
 export const LugarController = {
   listar(req, res, next) {
     try {
-      const { status, categoriaId } = req.query;
-      const lugares = LugarService.listar({ status, categoriaId });
+      // Suporte a filtros por query string: ?status=sonho&categoriaId=1&usuarioId=1
+      const { status, statusId, categoriaId, usuarioId } = req.query;
+      const lugares = LugarService.listar({ status, statusId, categoriaId, usuarioId });
       res.json(lugares);
     } catch (err) {
       next(err);
