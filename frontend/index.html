@@ -32,10 +32,35 @@
 
   <main class="container">
 
+    <!-- ══ USUÁRIOS ══ -->
+    <section class="card form-card mb-4">
+      <div class="card-body">
+        <h2 class="section-title">Quem é você?</h2>
+        <p class="text-muted small">Cadastre-se ou escolha seu usuário — os lugares que você adicionar ficam vinculados a ele automaticamente.</p>
+
+        <form id="form-usuario" class="row g-2 align-items-end mb-3">
+          <div class="col-12 col-md-5">
+            <label for="usuario-nome" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="usuario-nome" name="nome" placeholder="Seu nome" required />
+          </div>
+          <div class="col-12 col-md-5">
+            <label for="usuario-email" class="form-label">E-mail</label>
+            <input type="email" class="form-control" id="usuario-email" name="email" placeholder="seu@email.com" required />
+          </div>
+          <div class="col-12 col-md-2">
+            <button type="submit" class="btn btn-outline-primary w-100">Adicionar</button>
+          </div>
+        </form>
+
+        <div id="lista-usuarios" class="usuarios-lista"></div>
+      </div>
+    </section>
+
     <!-- ══ FORMULÁRIO ══ -->
     <section class="card form-card mb-4">
       <div class="card-body">
         <h2 class="section-title">Adicionar um novo lugar</h2>
+        <p id="usuario-ativo-aviso" class="usuario-ativo-aviso d-none"></p>
         <form id="form-lugar" class="row g-3">
 
           <div class="col-12 col-md-5">
@@ -69,6 +94,13 @@
             <input type="url" class="form-control" id="imagemUrl" name="imagemUrl" placeholder="https://..." />
           </div>
 
+          <div class="col-12 col-md-4 d-none" id="campo-usuario-manual">
+            <label for="usuarioId" class="form-label">Quem está adicionando</label>
+            <select class="form-select" id="usuarioId" name="usuarioId">
+              <option value="">Sem usuário vinculado</option>
+            </select>
+          </div>
+
           <div class="col-12">
             <button type="submit" class="btn btn-primary">
               Adicionar lugar
@@ -88,9 +120,6 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" data-status="visitado">Visitado</button>
       </div>
     </section>
-
-    <!-- ══ ALERTAS / FEEDBACK ══ -->
-    <div id="feedback"></div>
 
     <!-- ══ LISTA DE LUGARES ══ -->
     <section id="lista-lugares" class="row g-3 mb-5">

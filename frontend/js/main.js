@@ -1,31 +1,42 @@
 import { lugaresService } from './services/lugares.service.js';
 import { categoriasService } from './services/categorias.service.js';
+import { usuariosService } from './services/usuarios.service.js';
+import { anotacoesService } from './services/anotacoes.service.js';
 import {
   state,
   setLugares,
   setCategorias,
+  setUsuarios,
   setFiltroStatus,
+  setAnotacoesDoLugar,
+  getAnotacoesDoLugar,
 } from './state/store.js';
 import { renderLugares, renderResumo } from './ui/lugares.ui.js';
 import { renderCategoriasSelect } from './ui/categorias.ui.js';
+import { renderUsuariosSelect, renderUsuarios } from './ui/usuarios.ui.js';
+import { renderAnotacoes } from './ui/anotacoes.ui.js';
 import { mostrarFeedback } from './ui/feedback.js';
 
 // ── Elementos ────────────────────────────────────────────────
-const form = document.getElementById('form-lugar');
+const formLugar = document.getElementById('form-lugar');
+const formUsuario = document.getElementById('form-usuario');
 const filtrosContainer = document.getElementById('filtros');
 
 // ── Carregar dados iniciais ─────────────────────────────────
 async function init() {
   try {
-    const [lugares, categorias] = await Promise.all([
+    const [lugares, categorias, usuarios] = await Promise.all([
       lugaresService.listar(),
       categoriasService.listar(),
+      usuariosService.listar(),
     ]);
 
     setCategorias(categorias);
+    setUsuarios(usuarios);
     setLugares(lugares);
 
     renderCategoriasSelect(state.categorias);
+    renderUsuariosSelect(state.usuarios);
     atualizarTela();
   } catch (erro) {
     mostrarFeedback(
@@ -44,27 +55,32 @@ async function recarregarLugares() {
 }
 
 function atualizarTela() {
-  renderLugares(state.lugares, { onRemover: handleRemover });
+  renderLugares(state.lugares, {
+    onRemover: handleRemoverLugar,
+    onToggleAnotacoes: handleCarregarAnotacoes,
+    onCriarAnotacao: handleCriarAnotacao,
+  });
   renderResumo(state.lugares);
 }
 
 // ── Criar lugar (POST) ───────────────────────────────────────
-form.addEventListener('submit', async (event) => {
+formLugar.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  const formData = new FormData(form);
+  const formData = new FormData(formLugar);
   const dados = {
     nome: formData.get('nome'),
     pais: formData.get('pais'),
     categoriaId: formData.get('categoriaId'),
     status: formData.get('status'),
     imagemUrl: formData.get('imagemUrl'),
+    usuarioId: formData.get('usuarioId'),
   };
 
   try {
     await lugaresService.criar(dados);
     mostrarFeedback(`"${dados.nome}" foi adicionado à sua lista!`, 'success');
-    form.reset();
+    formLugar.reset();
     await recarregarLugares();
   } catch (erro) {
     mostrarFeedback(erro.message, 'danger');
@@ -72,8 +88,8 @@ form.addEventListener('submit', async (event) => {
 });
 
 // ── Remover lugar (DELETE) ────────────────────────────────────
-async function handleRemover(id) {
-  const confirmou = confirm('Remover este lugar da sua lista?');
+async function handleRemoverLugar(id) {
+  const confirmou = confirm('Remover este lugar da sua lista? As anotações dele também serão removidas.');
   if (!confirmou) return;
 
   try {
@@ -90,7 +106,6 @@ filtrosContainer.addEventListener('click', async (event) => {
   const btn = event.target.closest('button[data-status]');
   if (!btn) return;
 
-  // alterna o botão ativo
   filtrosContainer
     .querySelectorAll('button')
     .forEach((b) => b.classList.remove('active'));
@@ -100,5 +115,81 @@ filtrosContainer.addEventListener('click', async (event) => {
   await recarregarLugares();
 });
 
+// ── Criar usuário (POST) ───────────────────────────────────
+formUsuario.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const formData = new FormData(formUsuario);
+  const dados = {
+    nome: formData.get('nome'),
+    email: formData.get('email'),
+  };
+
+  try {
+    await usuariosService.criar(dados);
+    mostrarFeedback(`Usuário "${dados.nome}" cadastrado!`, 'success');
+    formUsuario.reset();
+    await recarregarUsuarios();
+  } catch (erro) {
+    mostrarFeedback(erro.message, 'danger');
+  }
+});
+
+async function recarregarUsuarios() {
+  const usuarios = await usuariosService.listar();
+  setUsuarios(usuarios);
+  renderUsuariosSelect(state.usuarios);
+  renderUsuarios(state.usuarios, { onRemover: handleRemoverUsuario });
+  atualizarTela(); // os cards de lugar mostram o nome do autor
+}
+
+async function handleRemoverUsuario(id) {
+  const confirmou = confirm('Remover este usuário?');
+  if (!confirmou) return;
+
+  try {
+    await usuariosService.remover(id);
+    mostrarFeedback('Usuário removido.', 'success');
+    await recarregarUsuarios();
+  } catch (erro) {
+    mostrarFeedback(erro.message, 'danger');
+  }
+}
+
+// ── Anotações (composição de Lugar) ─────────────────────────
+async function handleCarregarAnotacoes(lugarId) {
+  try {
+    const anotacoes = await anotacoesService.listarPorLugar(lugarId);
+    setAnotacoesDoLugar(lugarId, anotacoes);
+    renderAnotacoes(lugarId, anotacoes, { onRemover: handleRemoverAnotacao });
+  } catch (erro) {
+    mostrarFeedback(erro.message, 'danger');
+  }
+}
+
+async function handleCriarAnotacao(lugarId, texto) {
+  try {
+    await anotacoesService.criar(lugarId, texto);
+    const anotacoes = await anotacoesService.listarPorLugar(lugarId);
+    setAnotacoesDoLugar(lugarId, anotacoes);
+    renderAnotacoes(lugarId, anotacoes, { onRemover: handleRemoverAnotacao });
+  } catch (erro) {
+    mostrarFeedback(erro.message, 'danger');
+  }
+}
+
+async function handleRemoverAnotacao(id, lugarId) {
+  try {
+    await anotacoesService.remover(id);
+    const anotacoes = await anotacoesService.listarPorLugar(lugarId);
+    setAnotacoesDoLugar(lugarId, anotacoes);
+    renderAnotacoes(lugarId, anotacoes, { onRemover: handleRemoverAnotacao });
+  } catch (erro) {
+    mostrarFeedback(erro.message, 'danger');
+  }
+}
+
 // ── Start ──────────────────────────────────────────────────────
-init();
+init().then(() => {
+  renderUsuarios(state.usuarios, { onRemover: handleRemoverUsuario });
+});

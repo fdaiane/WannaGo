@@ -1,4 +1,4 @@
-import { getCategoriaPorId } from '../state/store.js';
+import { getCategoriaPorId, getUsuarioPorId } from '../state/store.js';
 
 const STATUS_LABELS = {
   sonho: 'Sonho',
@@ -15,7 +15,7 @@ const PLACEHOLDER_EMOJI = {
 /**
  * Renderiza a lista de lugares como cards Bootstrap.
  * @param {Array} lugares
- * @param {Object} handlers - { onRemover }
+ * @param {Object} handlers - { onRemover, onToggleAnotacoes, onCriarAnotacao, onRemoverAnotacao }
  */
 export function renderLugares(lugares, handlers) {
   const container = document.getElementById('lista-lugares');
@@ -35,6 +35,7 @@ export function renderLugares(lugares, handlers) {
     col.className = 'col-12 col-md-6 col-lg-4';
 
     const categoria = getCategoriaPorId(lugar.categoriaId);
+    const usuario = getUsuarioPorId(lugar.usuarioId);
 
     col.innerHTML = `
       <article class="lugar-card">
@@ -58,6 +59,32 @@ export function renderLugares(lugares, handlers) {
             }
           </div>
 
+          ${
+            usuario
+              ? `<p class="lugar-card__autor">adicionado por <strong>${usuario.nome}</strong></p>`
+              : ''
+          }
+
+          <button type="button" class="btn-toggle-anotacoes" data-lugar-id="${lugar.id}">
+            📝 Anotações
+          </button>
+
+          <div class="anotacoes-bloco d-none" data-anotacoes-bloco="${lugar.id}">
+            <div class="anotacoes-lista" data-anotacoes-de="${lugar.id}">
+              <p class="anotacao-vazia">Carregando...</p>
+            </div>
+            <form class="form-anotacao" data-lugar-id="${lugar.id}">
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Adicionar uma anotação..."
+                maxlength="280"
+                required
+              />
+              <button type="submit" class="btn btn-sm btn-outline-primary">+</button>
+            </form>
+          </div>
+
           <div class="lugar-card__acoes">
             <button type="button" class="btn-remover" data-id="${lugar.id}">
               Remover
@@ -70,11 +97,35 @@ export function renderLugares(lugares, handlers) {
     container.appendChild(col);
   });
 
-  // liga os eventos de remover
+  // liga os eventos de remover lugar
   container.querySelectorAll('.btn-remover').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
-      handlers.onRemover(id);
+      handlers.onRemover(btn.dataset.id);
+    });
+  });
+
+  // liga o toggle de anotações (expandir/colapsar + carregar sob demanda)
+  container.querySelectorAll('.btn-toggle-anotacoes').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const lugarId = btn.dataset.lugarId;
+      const bloco = container.querySelector(`[data-anotacoes-bloco="${lugarId}"]`);
+      const estavaEscondido = bloco.classList.contains('d-none');
+      bloco.classList.toggle('d-none');
+      if (estavaEscondido) {
+        handlers.onToggleAnotacoes(lugarId);
+      }
+    });
+  });
+
+  // liga o formulário de criar anotação
+  container.querySelectorAll('.form-anotacao').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = form.querySelector('input');
+      const texto = input.value.trim();
+      if (!texto) return;
+      handlers.onCriarAnotacao(form.dataset.lugarId, texto);
+      input.value = '';
     });
   });
 }

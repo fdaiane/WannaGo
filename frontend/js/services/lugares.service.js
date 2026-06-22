@@ -18,6 +18,10 @@ export const lugaresService = {
       dados.categoriaId = Number(dadosFormulario.categoriaId);
     }
 
+    if (dadosFormulario.usuarioId) {
+      dados.usuarioId = Number(dadosFormulario.usuarioId);
+    }
+
     return lugaresApi.criar(dados);
   },
 
