@@ -35,7 +35,7 @@ db.exec(`
     criado_em    TEXT NOT NULL,
     FOREIGN KEY (categoria_id) REFERENCES categorias(id),
     FOREIGN KEY (status_id)    REFERENCES status(id),
-    FOREIGN KEY (usuario_id)   REFERENCES usuarios(id)
+    FOREIGN KEY (usuario_id)   REFERENCES usuarios(id) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS anotacoes (
