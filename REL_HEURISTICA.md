@@ -137,9 +137,3 @@ Score Lighthouse (Acessibilidade): 72 / 100
 | Gravidade 2 (menor) | 3 |
 | Gravidade 1 (cosmético) | 3 |
 | Score de acessibilidade Lighthouse | 72 / 100 |
-
-### Os 3 que vou corrigir primeiro no E7:
-
-1. **Problema 2** (gravidade 4) — Traduzir erros técnicos da API para mensagens amigáveis no `client.js`
-2. **Problema 1** (gravidade 3) — Adicionar estado de loading no botão durante o `fetch`
-3. **Problema 10** (gravidade 3) — Adicionar `aria-live` na lista de lugares para acessibilidade de SPA
